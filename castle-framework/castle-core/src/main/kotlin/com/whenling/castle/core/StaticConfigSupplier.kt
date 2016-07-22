@@ -2,11 +2,6 @@ package com.whenling.castle.core
 
 import java.util.ArrayList
 
-import org.apache.commons.configuration2.AbstractConfiguration
-import org.apache.commons.configuration2.CombinedConfiguration
-
-import org.apache.commons.configuration2.PropertiesConfiguration
-import org.apache.commons.configuration2.XMLConfiguration
 import org.apache.commons.configuration2.plist.PropertyListConfiguration
 import org.apache.commons.configuration2.tree.OverrideCombiner
 import org.apache.commons.io.FilenameUtils
@@ -14,6 +9,8 @@ import org.apache.commons.lang3.StringUtils
 import org.springframework.core.io.ClassPathResource
 
 import com.google.common.base.Preconditions
+import org.apache.commons.configuration2.*
+import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder
 
 
 object StaticConfigSupplier {
@@ -35,48 +32,47 @@ object StaticConfigSupplier {
         _configLocations.add(configLocation)
     }
 
-    val configuration: CombinedConfiguration
+    val configuration: Configuration
         get() {
             if (CONFIGURATION == null) {
-                try {
-                    val combinedConfig = CombinedConfiguration()
-                    combinedConfig.setNodeCombiner(OverrideCombiner())
+                val combinedConfig = CombinedConfiguration()
 
-                    for (configLocation in _configLocations) {
-                        var subConfig: AbstractConfiguration? = null
+                combinedConfig.nodeCombiner = OverrideCombiner()
 
-                        if (StringUtils.endsWith(configLocation, ".xml")) {
-                            subConfig = XMLConfiguration(ClassPathResource(configLocation).path)
+                for (configLocation in _configLocations) {
+                    var subConfig: AbstractConfiguration? = null
 
-                        } else if (StringUtils.endsWith(configLocation, ".plist")) {
-                            subConfig = PropertyListConfiguration(ClassPathResource(configLocation).path)
+                    if (StringUtils.endsWith(configLocation, ".xml")) {
+                        subConfig = XMLConfiguration(ClassPathResource(configLocation).path)
 
-                        } else if (StringUtils.endsWith(configLocation, ".properties")) {
-                            subConfig = PropertiesConfiguration(ClassPathResource(configLocation).path)
+                    } else if (StringUtils.endsWith(configLocation, ".plist")) {
+                        subConfig = PropertyListConfiguration(ClassPathResource(configLocation).path)
 
-                        } else {
-                            throw IllegalStateException("unsupport configuration file type '"
-                                    + FilenameUtils.getExtension(configLocation) + '"')
-                        }
+                    } else if (StringUtils.endsWith(configLocation, ".properties")) {
+                        subConfig = PropertiesConfiguration(ClassPathResource(configLocation).path)
 
-                        if (subConfig is FileConfiguration) {
-                            (subConfig as FileConfiguration).setAutoSave(false)
-                        }
-
-                        combinedConfig.addConfiguration(subConfig)
+                    } else {
+                        throw IllegalStateException("unsupport configuration file type '"
+                                + FilenameUtils.getExtension(configLocation) + '"')
                     }
 
-                    combinedConfig.setForceReloadCheck(false)
+                    if (subConfig is FileBasedConfigurationBuilder<FileBasedConfiguration>) {
 
-                    CONFIGURATION = combinedConfig
+                    }
 
-                    _frozen = true
-                } catch (ex: ConfigurationException) {
-                    throw RuntimeException(ex)
+                    combinedConfig.addConfiguration(subConfig)
                 }
 
-            }
 
-            return CONFIGURATION
+                combinedConfig.setForceReloadCheck(false)
+
+                CONFIGURATION = combinedConfig
+
+                _frozen = true
+            }
+            return CombinedConfiguration()
         }
+
+
+
 }
